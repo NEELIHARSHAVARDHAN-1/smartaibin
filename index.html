@@ -162,16 +162,16 @@
             </div>
 
             <div class="relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl border border-emerald-500/20 bg-black group">
-    <iframe
-        class="absolute top-0 left-0 w-full h-full"
-        src="https://www.youtube.com/embed/Q30c_mKGObU?playsinline=1&rel=0&modestbranding=1"
-        title="Smart AI Bin Demo"
-        frameborder="0"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        allowfullscreen>
-    </iframe>
-    <div class="absolute inset-0 pointer-events-none border-[12px] border-black/5 rounded-2xl group-hover:border-transparent transition-all duration-500"></div>
-</div>
+                <iframe
+                    class="absolute top-0 left-0 w-full h-full"
+                    src="https://www.youtube.com/embed/Q30c_mKGObU?playsinline=1&rel=0&modestbranding=1"
+                    title="Smart AI Bin Demo"
+                    frameborder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowfullscreen>
+                </iframe>
+                <div class="absolute inset-0 pointer-events-none border-[12px] border-black/5 rounded-2xl group-hover:border-transparent transition-all duration-500"></div>
+            </div>
 
             <div class="mt-8 flex flex-wrap justify-center gap-4">
                 <div class="glass px-6 py-3 rounded-full flex items-center gap-3">
@@ -464,9 +464,9 @@
         let feedbacks = [
             { name: "Dr. Ramesh Kumar", designation: "Professor", org: "GPREC Kurnool", rating: 5, comment: "Excellent innovation! The AI classification accuracy is impressive.", time: "2h ago" },
             { name: "Anjali Sharma", designation: "Student", org: "GPREC", rating: 5, comment: "This is exactly what our campus needs. Great work Harsha and Bharani!", time: "5h ago" },
-            { name: "Suresh Reddy", designation: "Faculty", org: "GPREC", rating: 4, comment: "Good implementation of IoT concepts. Looking forward to deployment.", time: "1d ago" },
-            { name: "Priya Nair", designation: "Researcher", org: "LTSU", rating: 5, comment: "The compaction mechanism is brilliant. Very practical solution.", time: "2d ago" },
-            { name: "Venkatesh", designation: "Student", org: "GPREC", rating: 5, comment: "Proud to see our college students creating such impactful tech!", time: "3d ago" }
+            { name: "Suresh Reddy", designation: "HOD", org: "ECE Department", rating: 4, comment: "Good implementation of IoT concepts. Looking forward to deployment.", time: "1d ago" },
+            { name: "Priya Nair", designation: "Researcher", org: "IIT Madras", rating: 5, comment: "The compaction mechanism is brilliant. Very practical solution.", time: "2d ago" },
+            { name: "Venkatesh", designation: "Student", org: "GPRBH", rating: 5, comment: "Proud to see our college students creating such impactful tech!", time: "3d ago" }
         ];
 
         // --- DOM Elements ---
@@ -475,6 +475,7 @@
         const avgDisplay = document.getElementById('average-rating-display');
         const countDisplay = document.getElementById('total-reviews-count');
         const toast = document.getElementById('toast');
+        const submitBtn = form.querySelector('button[type="submit"]');
 
         // --- Functions ---
 
@@ -524,7 +525,7 @@
 
         function renderTicker() {
             const content = feedbacks.map(createCardHTML).join('');
-            track.innerHTML = content + content;
+            track.innerHTML = content + content; // Duplicate for continuous scroll
         }
 
         function showToast() {
@@ -536,27 +537,63 @@
 
         // --- Event Listeners ---
 
-        form.addEventListener('submit', (e) => {
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const newFeedback = {
+            // 1. Prepare UI Loading State
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span>Sending...</span><i class="fas fa-spinner fa-spin"></i>';
+
+            // 2. Capture Form Data
+            const formData = {
                 name: document.getElementById('name').value,
                 designation: document.getElementById('designation').value,
-                org: document.getElementById('organization').value,
+                organization: document.getElementById('organization').value,
                 email: document.getElementById('email').value,
                 phone: document.getElementById('phone').value,
                 rating: document.querySelector('input[name="rating"]:checked').value,
                 comment: document.getElementById('comment').value,
-                time: "Just now"
+                _subject: "Smart AI Bin: New User Feedback Received"
             };
 
-            feedbacks.unshift(newFeedback);
+            try {
+                // 3. Send to Formspree via Fetch API
+                const response = await fetch("https://formspree.io/f/mqedjqrz", {
+                    method: "POST",
+                    body: JSON.stringify(formData),
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
 
-            updateStats();
-            renderTicker();
-            showToast();
-            
-            form.reset();
+                if (response.ok) {
+                    // 4. Update Local State & Display Feedback
+                    feedbacks.unshift({
+                        ...formData,
+                        org: formData.organization, // map to existing variable name
+                        time: "Just now"
+                    });
+
+                    updateStats();
+                    renderTicker();
+                    showToast();
+                    form.reset();
+                } else {
+                    const data = await response.json();
+                    if (Object.hasOwn(data, 'errors')) {
+                        alert(data["errors"].map(error => error["message"]).join(", "));
+                    } else {
+                        alert("Oops! There was a problem submitting your feedback.");
+                    }
+                }
+            } catch (error) {
+                alert("Network error. Please try again later.");
+            } finally {
+                // Restore button
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span>Submit Feedback</span><i class="fas fa-paper-plane group-hover:translate-x-1 transition-transform"></i>';
+            }
         });
 
         // --- Initialization ---
